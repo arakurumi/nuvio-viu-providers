@@ -1,0 +1,15 @@
+{
+  "name": "nuvio-viu-provider",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Viu Indonesia provider for Nuvio (viu.com/ott/id)",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "preview": "node tools/preview.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3"
+  }
+}

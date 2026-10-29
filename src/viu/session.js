@@ -1,4 +1,4 @@
-import { LANGUAGES, REGION, VIU } from './config.js';
+import { LANGUAGES, REGION, VIU } from "./config.js";
 
 /**
  * Reads the settings Nuvio injects into the plugin sandbox.
@@ -6,12 +6,12 @@ import { LANGUAGES, REGION, VIU } from './config.js';
  * @returns {Record<string, any>}
  */
 export function readSettings() {
-  try {
-    const settings = globalThis.SCRAPER_SETTINGS;
-    return settings && typeof settings === 'object' ? settings : {};
-  } catch (error) {
-    return {};
-  }
+	try {
+		const settings = globalThis.SCRAPER_SETTINGS;
+		return settings && typeof settings === "object" ? settings : {};
+	} catch {
+		return {};
+	}
 }
 
 /**
@@ -24,53 +24,53 @@ export function readSettings() {
  * @returns {Record<string, string>}
  */
 export function parseCookieInput(raw) {
-  const jar = {};
-  if (!raw) return jar;
+	const jar = {};
+	if (!raw) return jar;
 
-  const text = String(raw).trim();
-  if (!text) return jar;
+	const text = String(raw).trim();
+	if (!text) return jar;
 
-  if (text.charAt(0) === '{') {
-    try {
-      const parsed = JSON.parse(text);
-      Object.keys(parsed).forEach((key) => {
-        if (parsed[key] != null) jar[key] = String(parsed[key]);
-      });
-      if (Object.keys(jar).length) return jar;
-    } catch (error) {
-      // Fall through to the line based parser.
-    }
-  }
+	if (text.charAt(0) === "{") {
+		try {
+			const parsed = JSON.parse(text);
+			Object.keys(parsed).forEach((key) => {
+				if (parsed[key] != null) jar[key] = String(parsed[key]);
+			});
+			if (Object.keys(jar).length) return jar;
+		} catch {
+			// Fall through to the line based parser.
+		}
+	}
 
-  const lines = text.split(/\r?\n/);
-  for (const line of lines) {
-    let value = line.trim();
-    if (!value) continue;
+	const lines = text.split(/\r?\n/);
+	for (const line of lines) {
+		let value = line.trim();
+		if (!value) continue;
 
-    // Netscape exports prefix HttpOnly cookies with #HttpOnly_.
-    if (value.indexOf('#HttpOnly_') === 0) {
-      value = value.slice('#HttpOnly_'.length);
-    } else if (value.charAt(0) === '#') {
-      continue;
-    }
+		// Netscape exports prefix HttpOnly cookies with #HttpOnly_.
+		if (value.indexOf("#HttpOnly_") === 0) {
+			value = value.slice("#HttpOnly_".length);
+		} else if (value.charAt(0) === "#") {
+			continue;
+		}
 
-    const parts = value.split('\t');
-    if (parts.length >= 7) {
-      jar[parts[5]] = parts[6];
-      continue;
-    }
+		const parts = value.split("\t");
+		if (parts.length >= 7) {
+			jar[parts[5]] = parts[6];
+			continue;
+		}
 
-    const header = value.replace(/^cookie\s*:\s*/i, '');
-    for (const pair of header.split(';')) {
-      const separator = pair.indexOf('=');
-      if (separator <= 0) continue;
-      const key = pair.slice(0, separator).trim();
-      const cookieValue = pair.slice(separator + 1).trim();
-      if (key && cookieValue) jar[key] = cookieValue;
-    }
-  }
+		const header = value.replace(/^cookie\s*:\s*/i, "");
+		for (const pair of header.split(";")) {
+			const separator = pair.indexOf("=");
+			if (separator <= 0) continue;
+			const key = pair.slice(0, separator).trim();
+			const cookieValue = pair.slice(separator + 1).trim();
+			if (key && cookieValue) jar[key] = cookieValue;
+		}
+	}
 
-  return jar;
+	return jar;
 }
 
 /**
@@ -78,9 +78,9 @@ export function parseCookieInput(raw) {
  * @returns {string}
  */
 function cookieHeader(jar) {
-  return Object.keys(jar)
-    .map((key) => `${key}=${jar[key]}`)
-    .join('; ');
+	return Object.keys(jar)
+		.map((key) => `${key}=${jar[key]}`)
+		.join("; ");
 }
 
 /**
@@ -90,20 +90,20 @@ function cookieHeader(jar) {
  * @returns {{ jar: Record<string, string>, token: string, cookieHeader: string, countryCode: string, areaId: string, languageKey: string, languageFlagId: string, userLevel: string }}
  */
 export function createSession(settings) {
-  const jar = parseCookieInput(settings.cookie);
-  const languageKey = LANGUAGES[settings.language] ? settings.language : 'id';
-  const language = LANGUAGES[languageKey];
+	const jar = parseCookieInput(settings.cookie);
+	const languageKey = LANGUAGES[settings.language] ? settings.language : "id";
+	const language = LANGUAGES[languageKey];
 
-  return {
-    jar,
-    token: String(jar.token || '').replace(/^Bearer\s+/i, ''),
-    cookieHeader: cookieHeader(jar),
-    countryCode: String(jar.countryCode || REGION.countryCode).toUpperCase(),
-    areaId: String(jar.areaId || REGION.areaId),
-    languageKey,
-    languageFlagId: language.flag,
-    userLevel: String(jar.user_level || '0'),
-  };
+	return {
+		areaId: String(jar.areaId || REGION.areaId),
+		cookieHeader: cookieHeader(jar),
+		countryCode: String(jar.countryCode || REGION.countryCode).toUpperCase(),
+		jar,
+		languageFlagId: language.flag,
+		languageKey,
+		token: String(jar.token || "").replace(/^Bearer\s+/i, ""),
+		userLevel: String(jar.user_level || "0"),
+	};
 }
 
 /**
@@ -114,17 +114,17 @@ export function createSession(settings) {
  * @returns {Record<string, string>}
  */
 export function buildRequestHeaders(session) {
-  const headers = {
-    'User-Agent': VIU.userAgent,
-    Accept: 'application/json, text/plain, */*',
-    'Accept-Language': VIU.acceptLanguage,
-    ccode: session.countryCode,
-    'x-client': 'browser',
-    Referer: `${VIU.baseUrl}/`,
-    Origin: VIU.baseUrl,
-  };
+	const headers = {
+		Accept: "application/json, text/plain, */*",
+		"Accept-Language": VIU.acceptLanguage,
+		ccode: session.countryCode,
+		Origin: VIU.baseUrl,
+		Referer: `${VIU.baseUrl}/`,
+		"User-Agent": VIU.userAgent,
+		"x-client": "browser",
+	};
 
-  if (session.cookieHeader) headers.Cookie = session.cookieHeader;
-  if (session.token) headers.Authorization = `Bearer ${session.token}`;
-  return headers;
+	if (session.cookieHeader) headers.Cookie = session.cookieHeader;
+	if (session.token) headers.Authorization = `Bearer ${session.token}`;
+	return headers;
 }

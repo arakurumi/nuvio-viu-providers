@@ -31,8 +31,11 @@ var ViuProvider = (() => {
   function withTimeout(promise, ms) {
     if (typeof setTimeout !== "function" || !(ms > 0)) return promise;
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`request timed out after ${ms}ms`)), ms);
-      const clear = typeof clearTimeout === "function" ? clearTimeout : function() {
+      const timer = setTimeout(
+        () => reject(new Error(`request timed out after ${ms}ms`)),
+        ms
+      );
+      const clear = typeof clearTimeout === "function" ? clearTimeout : () => {
       };
       promise.then(
         (value) => {
@@ -60,21 +63,30 @@ var ViuProvider = (() => {
         return null;
       }
       const headers = Object.assign(
-        { "User-Agent": userAgent, Accept: accept, "Accept-Language": "en-US,en;q=0.9" },
+        {
+          Accept: accept,
+          "Accept-Language": "en-US,en;q=0.9",
+          "User-Agent": userAgent
+        },
         options.headers || {}
       );
-      const init = { method: options.method || "GET", headers };
-      if (options.body !== void 0 && options.body !== null) init.body = options.body;
+      const init = { headers, method: options.method || "GET" };
+      if (options.body !== void 0 && options.body !== null)
+        init.body = options.body;
       try {
         const timeout = Math.min(REQUEST_TIMEOUT_MS, Math.max(1e3, remaining()));
         const response = await withTimeout(fetch(url, init), timeout);
         if (!response || response.status === 0 || !response.ok) {
-          log.warn(`HTTP ${response ? response.status : "no-response"} for ${url}`);
+          log.warn(
+            `HTTP ${response ? response.status : "no-response"} for ${url}`
+          );
           return null;
         }
         return await response.text() || "";
       } catch (error) {
-        log.warn(`Request failed for ${url}: ${error && error.message ? error.message : error}`);
+        log.warn(
+          `Request failed for ${url}: ${error?.message ? error.message : error}`
+        );
         return null;
       }
     }
@@ -82,18 +94,21 @@ var ViuProvider = (() => {
       const payload = await text(
         url,
         Object.assign({}, options, {
-          headers: Object.assign({ Accept: "application/json" }, options.headers || {})
+          headers: Object.assign(
+            { Accept: "application/json" },
+            options.headers || {}
+          )
         })
       );
       if (!payload) return null;
       try {
         return JSON.parse(payload);
-      } catch (error) {
+      } catch {
         log.warn(`Invalid JSON from ${url}`);
         return null;
       }
     }
-    return { text, json, remaining, startedAt, budgetMs };
+    return { budgetMs, json, remaining, startedAt, text };
   }
 
   // src/shared/log.js
@@ -107,30 +122,38 @@ var ViuProvider = (() => {
       debug(...args) {
         write("log", args);
       },
+      error(...args) {
+        write("error", args);
+      },
       info(...args) {
         write("info", args);
       },
       warn(...args) {
         write("warn", args);
-      },
-      error(...args) {
-        write("error", args);
       }
     };
   }
 
   // src/shared/text.js
   function decodeEntities(value) {
-    return String(value === null || value === void 0 ? "" : value).replace(/&#x([0-9a-f]+);/gi, (match, hex) => String.fromCharCode(Number.parseInt(hex, 16))).replace(/&#(\d+);/g, (match, decimal) => String.fromCharCode(Number.parseInt(decimal, 10))).replace(/&nbsp;/gi, " ").replace(/&quot;/gi, '"').replace(/&#0*39;|&apos;/gi, "'").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&amp;/gi, "&");
+    return String(value === null || value === void 0 ? "" : value).replace(
+      /&#x([0-9a-f]+);/gi,
+      (_match, hex) => String.fromCharCode(Number.parseInt(hex, 16))
+    ).replace(
+      /&#(\d+);/g,
+      (_match, decimal) => String.fromCharCode(Number.parseInt(decimal, 10))
+    ).replace(/&nbsp;/gi, " ").replace(/&quot;/gi, '"').replace(/&#0*39;|&apos;/gi, "'").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&amp;/gi, "&");
   }
   function cleanText(value) {
     return decodeEntities(value).replace(/\s+/g, " ").trim();
   }
   function normalize(value) {
-    let text = String(value === null || value === void 0 ? "" : value).toLowerCase();
+    let text = String(
+      value === null || value === void 0 ? "" : value
+    ).toLowerCase();
     try {
       text = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    } catch (error) {
+    } catch {
     }
     text = text.replace(/&/g, " and ").replace(/['`\u2019]/g, "");
     return text.replace(/[^a-z0-9]+/g, " ").trim();
@@ -159,11 +182,19 @@ var ViuProvider = (() => {
     if (/^\d+$/.test(numeric)) return { kind: "tmdb", value: numeric };
     return { kind: TRACKER_ID.test(raw) ? "tracker" : "unknown", value: raw };
   }
-  async function resolveTitles({ contentId, mediaType, http, log, countryPriority = [] }) {
+  async function resolveTitles({
+    contentId,
+    mediaType,
+    http,
+    log,
+    countryPriority = []
+  }) {
     const parsed = parseContentId(contentId);
-    const result = { titles: [], name: "" };
+    const result = { name: "", titles: [] };
     if (parsed.kind === "tracker") {
-      log.warn(`Content id "${contentId}" is a tracker id; use a TMDB or IMDb id instead.`);
+      log.warn(
+        `Content id "${contentId}" is a tracker id; use a TMDB or IMDb id instead.`
+      );
       return result;
     }
     if (parsed.kind === "unknown") {
@@ -182,8 +213,8 @@ var ViuProvider = (() => {
         `${TMDB_API_BASE}/find/${encodeURIComponent(tmdbId)}?api_key=${apiKey}&external_source=imdb_id`
       );
       const list = found ? type === "movie" ? found.movie_results : found.tv_results : null;
-      const first = list && list.length ? list[0] : null;
-      if (!first || !first.id) {
+      const first = list?.length ? list[0] : null;
+      if (!first?.id) {
         log.warn(`IMDb id ${tmdbId} could not be resolved to a TMDB id.`);
         return result;
       }
@@ -231,28 +262,28 @@ var ViuProvider = (() => {
 
   // src/viu/config.js
   var VIU = {
-    label: "Viu",
-    providerId: "viu",
-    baseUrl: "https://www.viu.com",
-    apiBase: "https://api-gateway-global.viu.com/api",
-    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     acceptLanguage: "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
-    locale: "id",
+    apiBase: "https://api-gateway-global.viu.com/api",
+    baseUrl: "https://www.viu.com",
     /** Keep the whole provider within the 60 s plugin budget (30 s per request on TV). */
     budgetMs: 55e3,
-    searchPageSize: 20,
+    label: "Viu",
+    locale: "id",
     maxSearchQueries: 3,
     maxStreams: 8,
+    providerId: "viu",
+    searchPageSize: 20,
     /** Alternative title countries from TMDB, searched in this order. */
-    titleCountryPriority: ["ID", "US", "GB"]
+    titleCountryPriority: ["ID", "US", "GB"],
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
   };
   var REGION = {
-    countryCode: "ID",
-    areaId: "1000"
+    areaId: "1000",
+    countryCode: "ID"
   };
   var LANGUAGES = {
-    id: { flag: "8", label: "Bahasa Indonesia" },
-    en: { flag: "3", label: "English" }
+    en: { flag: "3", label: "English" },
+    id: { flag: "8", label: "Bahasa Indonesia" }
   };
   var QUALITIES = [
     { key: "s1080p", label: "1080p" },
@@ -266,7 +297,7 @@ var ViuProvider = (() => {
     try {
       const settings = globalThis.SCRAPER_SETTINGS;
       return settings && typeof settings === "object" ? settings : {};
-    } catch (error) {
+    } catch {
       return {};
     }
   }
@@ -282,7 +313,7 @@ var ViuProvider = (() => {
           if (parsed[key] != null) jar[key] = String(parsed[key]);
         });
         if (Object.keys(jar).length) return jar;
-      } catch (error) {
+      } catch {
       }
     }
     const lines = text.split(/\r?\n/);
@@ -318,25 +349,25 @@ var ViuProvider = (() => {
     const languageKey = LANGUAGES[settings.language] ? settings.language : "id";
     const language = LANGUAGES[languageKey];
     return {
-      jar,
-      token: String(jar.token || "").replace(/^Bearer\s+/i, ""),
+      areaId: String(jar.areaId || REGION.areaId),
       cookieHeader: cookieHeader(jar),
       countryCode: String(jar.countryCode || REGION.countryCode).toUpperCase(),
-      areaId: String(jar.areaId || REGION.areaId),
-      languageKey,
+      jar,
       languageFlagId: language.flag,
+      languageKey,
+      token: String(jar.token || "").replace(/^Bearer\s+/i, ""),
       userLevel: String(jar.user_level || "0")
     };
   }
   function buildRequestHeaders(session) {
     const headers = {
-      "User-Agent": VIU.userAgent,
       Accept: "application/json, text/plain, */*",
       "Accept-Language": VIU.acceptLanguage,
       ccode: session.countryCode,
-      "x-client": "browser",
+      Origin: VIU.baseUrl,
       Referer: `${VIU.baseUrl}/`,
-      Origin: VIU.baseUrl
+      "User-Agent": VIU.userAgent,
+      "x-client": "browser"
     };
     if (session.cookieHeader) headers.Cookie = session.cookieHeader;
     if (session.token) headers.Authorization = `Bearer ${session.token}`;
@@ -345,13 +376,13 @@ var ViuProvider = (() => {
 
   // src/viu/client.js
   function isSuccess(payload) {
-    if (!payload || !payload.status) return false;
+    if (!payload?.status) return false;
     const status = payload.status;
     if (typeof status === "number") return status === 0;
     return status.code === 0;
   }
   function messageOf(payload) {
-    if (!payload || !payload.status) return "unknown error";
+    if (!payload?.status) return "unknown error";
     const status = payload.status;
     if (typeof status === "number") return `status ${status}`;
     return `${status.message || "error"} (${status.code})`;
@@ -361,7 +392,9 @@ var ViuProvider = (() => {
     Object.keys(params).forEach((key) => {
       const value = params[key];
       if (value === null || value === void 0 || value === "") return;
-      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+      parts.push(
+        `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`
+      );
     });
     return parts.join("&");
   }
@@ -369,18 +402,22 @@ var ViuProvider = (() => {
     const headers = buildRequestHeaders(session);
     function baseQuery() {
       return {
-        platform_flag_label: "web",
         area_id: session.areaId,
-        language_flag_id: session.languageFlagId,
-        ut: session.userLevel,
-        platformFlagLabel: "web",
         areaId: session.areaId,
+        countryCode: session.countryCode,
+        language_flag_id: session.languageFlagId,
         languageFlagId: session.languageFlagId,
-        countryCode: session.countryCode
+        platform_flag_label: "web",
+        platformFlagLabel: "web",
+        ut: session.userLevel
       };
     }
     async function request(route, params, mobile) {
-      const query = Object.assign(mobile ? { r: route } : {}, baseQuery(), params || {});
+      const query = Object.assign(
+        mobile ? { r: route } : {},
+        baseQuery(),
+        params || {}
+      );
       const url = mobile ? `${VIU.apiBase}/mobile?${serialize(query)}` : `${VIU.apiBase}${route}?${serialize(query)}`;
       const payload = await http.json(url, { headers });
       if (!payload || !isSuccess(payload)) {
@@ -392,32 +429,39 @@ var ViuProvider = (() => {
     async function search(keyword) {
       const data = await request(
         "/search/video",
-        { keyword, page: "1", size: String(VIU.searchPageSize), os_flag_id: "1" },
+        { keyword, os_flag_id: "1", page: "1", size: String(VIU.searchPageSize) },
         true
       );
-      return data && data.series || [];
+      return data?.series || [];
     }
     async function getDetail(productId) {
-      return request("/vod/detail", { product_id: String(productId), os_flag_id: "1" }, true);
+      return request(
+        "/vod/detail",
+        { os_flag_id: "1", product_id: String(productId) },
+        true
+      );
     }
     async function getProducts(seriesId) {
       if (!seriesId) return [];
       const data = await request(
         "/vod/product-list",
-        { series_id: String(seriesId), sort: "asc", size: "-1", os_flag_id: "1" },
+        { os_flag_id: "1", series_id: String(seriesId), size: "-1", sort: "asc" },
         true
       );
-      return data && data.product_list || [];
+      return data?.product_list || [];
     }
     async function getPlayback(ccsProductId) {
       const data = await request(
         "/playback/distribute",
-        { ccs_product_id: String(ccsProductId), language_flag_id: session.languageFlagId },
+        {
+          ccs_product_id: String(ccsProductId),
+          language_flag_id: session.languageFlagId
+        },
         false
       );
-      return data && data.stream || null;
+      return data?.stream || null;
     }
-    return { search, getDetail, getProducts, getPlayback };
+    return { getDetail, getPlayback, getProducts, search };
   }
 
   // src/viu/matching.js
@@ -443,7 +487,7 @@ var ViuProvider = (() => {
     return { base, normalized: normalize(base), season };
   }
   function categoryIsMovie(item) {
-    return /^(film|movie)\b/i.test(String(item && item.category_name || ""));
+    return /^(film|movie)\b/i.test(String(item?.category_name || ""));
   }
   function isRejectedTitle(name) {
     const normalized = normalize(name);
@@ -488,20 +532,31 @@ var ViuProvider = (() => {
     titles.forEach(add);
     return queries.slice(0, VIU.maxSearchQueries);
   }
-  async function findBestMatch({ titles, mediaType, season, search, log }) {
+  async function findBestMatch({
+    titles,
+    mediaType,
+    season,
+    search,
+    log
+  }) {
     const queries = buildQueries(titles, mediaType, season);
     let best = null;
     for (const query of queries) {
       const items = await search(query);
       for (const item of items) {
-        const name = item && item.name;
+        const name = item?.name;
         if (!name || isRejectedTitle(name)) continue;
         if (mediaType === "tv" && categoryIsMovie(item)) continue;
         let score = scoreCandidate(name, query, season, mediaType);
         if (!score) continue;
         if (categoryIsMovie(item)) score += mediaType === "movie" ? 20 : -20;
         if (!best || score > best.score) {
-          best = { item, score, query, parsed: parseTitle(name, mediaType === "tv") };
+          best = {
+            item,
+            parsed: parseTitle(name, mediaType === "tv"),
+            query,
+            score
+          };
         }
       }
       if (best && best.score >= 900) break;
@@ -510,7 +565,9 @@ var ViuProvider = (() => {
       log.warn(`No reliable Viu match for ${titles.slice(0, 2).join(" | ")}.`);
       return null;
     }
-    log.info(`Matched "${best.item.name}" for query "${best.query}" (score ${best.score}).`);
+    log.info(
+      `Matched "${best.item.name}" for query "${best.query}" (score ${best.score}).`
+    );
     return best;
   }
 
@@ -536,17 +593,18 @@ var ViuProvider = (() => {
     if (referer) headers.Referer = referer;
     if (origin) headers.Origin = origin;
     const stream = {
-      name,
-      title: streamTitle(title),
-      url,
-      quality: quality || "HD",
-      type,
+      headers,
       language,
+      name,
       provider,
-      headers
+      quality: quality || "HD",
+      title: streamTitle(title),
+      type,
+      url
     };
     if (size) stream.size = size;
-    if (Array.isArray(subtitles) && subtitles.length) stream.subtitles = subtitles;
+    if (Array.isArray(subtitles) && subtitles.length)
+      stream.subtitles = subtitles;
     return stream;
   }
 
@@ -568,23 +626,25 @@ var ViuProvider = (() => {
     return String(value || "").toLowerCase().replace(/_/g, "-").replace(/[^a-z-]/g, "");
   }
   function buildSubtitles(detail) {
-    const subtitles = detail && detail.current_product && detail.current_product.subtitle || [];
+    const subtitles = detail?.current_product?.subtitle || [];
     const seen = {};
     const result = [];
-    const headers = { "User-Agent": VIU.userAgent, Referer: `${VIU.baseUrl}/` };
+    const headers = { Referer: `${VIU.baseUrl}/`, "User-Agent": VIU.userAgent };
     for (const subtitle of subtitles) {
-      if (!subtitle || !subtitle.url) continue;
-      const language = normalizeSubtitleLanguage(subtitle.iso_code || subtitle.code || subtitle.name);
+      if (!subtitle?.url) continue;
+      const language = normalizeSubtitleLanguage(
+        subtitle.iso_code || subtitle.code || subtitle.name
+      );
       if (!language || seen[language]) continue;
       seen[language] = true;
       result.push({
-        url: subtitle.url,
+        headers,
         language,
         name: subtitle.name || language,
-        headers
+        url: subtitle.url
       });
     }
-    const priority = { id: 0, en: 1 };
+    const priority = { en: 1, id: 0 };
     result.sort((a, b) => {
       const left = priority[a.language] === void 0 ? 99 : priority[a.language];
       const right = priority[b.language] === void 0 ? 99 : priority[b.language];
@@ -602,18 +662,20 @@ var ViuProvider = (() => {
     if (!allowIndexFallback) return null;
     const ordered = products.slice().sort((a, b) => Number(a.number) - Number(b.number));
     if (episode >= 1 && episode <= ordered.length) {
-      log.info(`Episode ${episode} has no exact number, using position ${episode}.`);
+      log.info(
+        `Episode ${episode} has no exact number, using position ${episode}.`
+      );
       return ordered[episode - 1];
     }
     return null;
   }
   function isDrmProtected(stream) {
-    const flag = String(stream && stream.is_drm || "").toLowerCase();
+    const flag = String(stream?.is_drm || "").toLowerCase();
     return flag === "y" || flag === "yes" || flag === "true" || flag === "1";
   }
   function buildStreams({ stream, detail, label, settings }) {
-    const urls = stream && stream.url || {};
-    const sizes = stream && stream.size || {};
+    const urls = stream?.url || {};
+    const sizes = stream?.size || {};
     const subtitles = settings.includeSubtitles === false ? [] : buildSubtitles(detail);
     const seen = {};
     const streams = [];
@@ -623,16 +685,16 @@ var ViuProvider = (() => {
       seen[url] = true;
       streams.push(
         buildStream({
+          language: VIU.locale,
           name: VIU.label,
           provider: VIU.providerId,
-          title: `${label} • ${quality.label}`,
-          url,
           quality: quality.label,
-          type: "hls",
-          language: VIU.locale,
           referer: `${VIU.baseUrl}/`,
           size: formatSize(sizes[quality.key]),
           subtitles,
+          title: `${label} • ${quality.label}`,
+          type: "hls",
+          url,
           userAgent: VIU.userAgent
         })
       );
@@ -647,7 +709,7 @@ var ViuProvider = (() => {
     try {
       return await resolveStreams(contentId, mediaType, season, episode, log);
     } catch (error) {
-      log.error(`Unexpected error: ${error && error.message ? error.message : error}`);
+      log.error(`Unexpected error: ${error?.message ? error.message : error}`);
       return [];
     }
   }
@@ -655,42 +717,46 @@ var ViuProvider = (() => {
     const settings = readSettings();
     const session = createSession(settings);
     if (!session.token) {
-      log.error('Missing Viu cookie token. Paste a viu.com cookie that contains the "token" value.');
+      log.error(
+        'Missing Viu cookie token. Paste a viu.com cookie that contains the "token" value.'
+      );
       return [];
     }
     const http = createHttpClient({
-      userAgent: VIU.userAgent,
       accept: "application/json, text/plain, */*",
       budgetMs: VIU.budgetMs,
+      log,
       startedAt: Date.now(),
-      log
+      userAgent: VIU.userAgent
     });
     const client = createViuClient({ http, log, session });
     const type = mediaType === "movie" ? "movie" : "tv";
     const seasonNumber = toPositiveInt(season);
     const episodeNumber = toPositiveInt(episode) || 1;
-    log.info(`Request id=${contentId} type=${type} season=${seasonNumber} episode=${episodeNumber}`);
+    log.info(
+      `Request id=${contentId} type=${type} season=${seasonNumber} episode=${episodeNumber}`
+    );
     const meta = await resolveTitles({
       contentId,
-      mediaType: type,
+      countryPriority: VIU.titleCountryPriority,
       http,
       log,
-      countryPriority: VIU.titleCountryPriority
+      mediaType: type
     });
     if (!meta.titles.length) {
       log.warn("No title candidates available; cannot search Viu.");
       return [];
     }
     const match = await findBestMatch({
-      titles: meta.titles,
+      log,
       mediaType: type,
-      season: seasonNumber,
       search: client.search,
-      log
+      season: seasonNumber,
+      titles: meta.titles
     });
     if (!match) return [];
     const detail = await client.getDetail(match.item.product_id);
-    if (!detail || !detail.current_product) {
+    if (!detail?.current_product) {
       log.warn("The Viu detail response has no current_product.");
       return [];
     }
@@ -708,11 +774,11 @@ var ViuProvider = (() => {
       product = await resolveEpisodeProduct({
         client,
         current,
-        seriesId,
-        season: seasonNumber,
         episode: episodeNumber,
         hasSeasonSuffix: match.parsed.season !== null,
-        log
+        log,
+        season: seasonNumber,
+        seriesId
       });
     }
     if (!product) {
@@ -736,7 +802,7 @@ var ViuProvider = (() => {
     }
     const episodeLabel = toPositiveInt(product.number) || episodeNumber;
     const label = type === "movie" ? "Movie" : `Episode ${episodeLabel}`;
-    const streams = buildStreams({ stream: playback, detail, label, settings });
+    const streams = buildStreams({ detail, label, settings, stream: playback });
     log.info(`Returning ${streams.length} stream(s).`);
     return streams;
   }
@@ -746,7 +812,15 @@ var ViuProvider = (() => {
     log.info("The matched content is not a movie, ignoring it.");
     return null;
   }
-  async function resolveEpisodeProduct({ client, current, seriesId, season, episode, hasSeasonSuffix, log }) {
+  async function resolveEpisodeProduct({
+    client,
+    current,
+    seriesId,
+    season,
+    episode,
+    hasSeasonSuffix,
+    log
+  }) {
     const products = await client.getProducts(seriesId);
     if (!products.length) {
       if (Number(current.number) === episode) return current;
@@ -763,36 +837,36 @@ var ViuProvider = (() => {
 
   // src/viu/settings.js
   var SETTINGS_LAYOUT = [
-    { type: "header", label: "Viu account" },
+    { label: "Viu account", type: "header" },
     {
-      type: "info",
+      description: "Paste the Cookie header from viu.com (or the contents of cookies.txt). The token cookie authenticates playback; premium titles need a premium account.",
       label: "Premium cookie required",
-      description: "Paste the Cookie header from viu.com (or the contents of cookies.txt). The token cookie authenticates playback; premium titles need a premium account."
+      type: "info"
     },
     {
-      type: "text",
+      description: "Example: token=...; user_id=...; user_level=2",
+      isPassword: true,
       key: "cookie",
       label: "Cookie",
-      description: "Example: token=...; user_id=...; user_level=2",
       placeholder: "token=...; user_id=...",
-      isPassword: true
+      type: "text"
     },
     {
-      type: "select",
+      defaultValue: "id",
       key: "language",
       label: "Metadata language",
-      defaultValue: "id",
       options: [
         { label: "Bahasa Indonesia", value: "id" },
         { label: "English", value: "en" }
-      ]
+      ],
+      type: "select"
     },
     {
-      type: "toggle",
+      defaultValue: true,
+      description: "Attach Viu subtitle tracks to each stream (Mobile only).",
       key: "includeSubtitles",
       label: "Include Viu subtitles",
-      defaultValue: true,
-      description: "Attach Viu subtitle tracks to each stream (Mobile only)."
+      type: "toggle"
     }
   ];
   async function onSettings() {

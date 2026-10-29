@@ -5,10 +5,10 @@
  * @returns {string}
  */
 export function streamTitle(value) {
-  return String(value === null || value === undefined ? '' : value)
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 120);
+	return String(value === null || value === undefined ? "" : value)
+		.replace(/\s+/g, " ")
+		.trim()
+		.slice(0, 120);
 }
 
 /**
@@ -30,36 +30,37 @@ export function streamTitle(value) {
  * @returns {Record<string, any>}
  */
 export function buildStream({
-  name,
-  provider,
-  title,
-  url,
-  quality,
-  type,
-  language,
-  referer,
-  origin,
-  size,
-  subtitles,
-  userAgent,
+	name,
+	provider,
+	title,
+	url,
+	quality,
+	type,
+	language,
+	referer,
+	origin,
+	size,
+	subtitles,
+	userAgent,
 }) {
-  const headers = { 'User-Agent': userAgent };
-  if (referer) headers.Referer = referer;
-  if (origin) headers.Origin = origin;
+	const headers = { "User-Agent": userAgent };
+	if (referer) headers.Referer = referer;
+	if (origin) headers.Origin = origin;
 
-  const stream = {
-    name,
-    title: streamTitle(title),
-    url,
-    quality: quality || 'HD',
-    type,
-    language,
-    provider,
-    headers,
-  };
+	const stream = {
+		headers,
+		language,
+		name,
+		provider,
+		quality: quality || "HD",
+		title: streamTitle(title),
+		type,
+		url,
+	};
 
-  if (size) stream.size = size;
-  if (Array.isArray(subtitles) && subtitles.length) stream.subtitles = subtitles;
+	if (size) stream.size = size;
+	if (Array.isArray(subtitles) && subtitles.length)
+		stream.subtitles = subtitles;
 
-  return stream;
+	return stream;
 }

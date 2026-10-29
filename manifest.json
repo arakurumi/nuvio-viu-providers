@@ -1,23 +1,23 @@
 {
-  "name": "Nuvio Viu Provider",
-  "version": "1.0.0",
-  "description": "Viu Indonesia (viu.com/ott/id) provider for Nuvio: movies and series from Viu's own web API with your premium account cookie.",
-  "author": "Kurumi",
-  "scrapers": [
-    {
-      "id": "viu",
-      "name": "Viu",
-      "description": "Movies and series from Viu Indonesia. Requires a viu.com cookie (token) from a logged-in account.",
-      "version": "1.0.0",
-      "author": "Kurumi",
-      "supportedTypes": ["movie", "tv"],
-      "filename": "providers/viu.js",
-      "enabled": true,
-      "hasSettings": true,
-      "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Viu_logo.svg/250px-Viu_logo.svg.png",
-      "contentLanguage": ["id", "en"],
-      "formats": ["hls"],
-      "supportsExternalPlayer": false
-    }
-  ]
+	"author": "Kurumi",
+	"description": "Viu Indonesia (viu.com/ott/id) provider for Nuvio: movies and series from Viu's own web API with your premium account cookie.",
+	"name": "Nuvio Viu Provider",
+	"scrapers": [
+		{
+			"author": "Kurumi",
+			"contentLanguage": ["id", "en"],
+			"description": "Movies and series from Viu Indonesia. Requires a viu.com cookie (token) from a logged-in account.",
+			"enabled": true,
+			"filename": "providers/viu.js",
+			"formats": ["hls"],
+			"hasSettings": true,
+			"id": "viu",
+			"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Viu_logo.svg/250px-Viu_logo.svg.png",
+			"name": "Viu",
+			"supportedTypes": ["movie", "tv"],
+			"supportsExternalPlayer": false,
+			"version": "1.0.0"
+		}
+	],
+	"version": "1.0.0"
 }

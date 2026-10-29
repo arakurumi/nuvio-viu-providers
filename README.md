@@ -180,6 +180,7 @@ The `hasSettings` flag in `manifest.json` makes Nuvio call the exported `onSetti
 ```text
 Viu/
 ├── build.mjs            # esbuild bundler (IIFE, one output per provider)
+├── biome.json           # Biome config (lint + format verification)
 ├── manifest.json        # Provider metadata read by Nuvio
 ├── package.json
 ├── providers/           # Build output — do not edit by hand
@@ -207,9 +208,11 @@ Files in `providers/` are **generated** by `build.mjs` and start with a warning 
 
 | Command | Description |
 | --- | --- |
-| `npm install` | Install dependencies (`esbuild`) |
+| `npm install` | Install dependencies (`esbuild`, `@biomejs/biome`) |
 | `npm run build` | Bundle the provider into `providers/` |
 | `npm run watch` | Rebuild automatically when `src/` changes |
+| `npm run lint` | Verify lint and formatting with Biome (fails on warnings) |
+| `npm run lint:fix` | Apply Biome's safe fixes and formatting |
 | `npm run preview -- <content-id> [movie\|tv] [season] [episode] [--json] [--cookie <file>] [--lang id\|en]` | Run the bundle in the local sandbox |
 
 ---

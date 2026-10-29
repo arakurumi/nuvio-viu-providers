@@ -1,15 +1,18 @@
 {
-  "name": "nuvio-viu-provider",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "Viu Indonesia provider for Nuvio (viu.com/ott/id)",
-  "scripts": {
-    "build": "node build.mjs",
-    "watch": "node build.mjs --watch",
-    "preview": "node tools/preview.mjs"
-  },
-  "devDependencies": {
-    "esbuild": "^0.27.3"
-  }
+	"description": "Viu Indonesia provider for Nuvio (viu.com/ott/id)",
+	"devDependencies": {
+		"@biomejs/biome": "^2.6.4",
+		"esbuild": "^0.28.2"
+	},
+	"name": "nuvio-viu-provider",
+	"private": true,
+	"scripts": {
+		"build": "node build.mjs",
+		"lint": "biome check --error-on-warnings .",
+		"lint:fix": "biome check --write .",
+		"preview": "node tools/preview.mjs",
+		"watch": "node build.mjs --watch"
+	},
+	"type": "module",
+	"version": "1.0.0"
 }

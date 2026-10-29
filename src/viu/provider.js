@@ -1,12 +1,17 @@
-import { createHttpClient } from '../shared/http.js';
-import { createLogger } from '../shared/log.js';
-import { resolveTitles } from '../shared/tmdb.js';
-import { toPositiveInt } from '../shared/text.js';
-import { createViuClient } from './client.js';
-import { VIU } from './config.js';
-import { categoryIsMovie, findBestMatch } from './matching.js';
-import { buildStreams, isDrmProtected, isSingleMovieProduct, pickEpisode } from './playback.js';
-import { buildRequestHeaders, createSession, readSettings } from './session.js';
+import { createHttpClient } from "../shared/http.js";
+import { createLogger } from "../shared/log.js";
+import { toPositiveInt } from "../shared/text.js";
+import { resolveTitles } from "../shared/tmdb.js";
+import { createViuClient } from "./client.js";
+import { VIU } from "./config.js";
+import { categoryIsMovie, findBestMatch } from "./matching.js";
+import {
+	buildStreams,
+	isDrmProtected,
+	isSingleMovieProduct,
+	pickEpisode,
+} from "./playback.js";
+import { createSession, readSettings } from "./session.js";
 
 /**
  * Viu Indonesia provider entry point.
@@ -22,14 +27,14 @@ import { buildRequestHeaders, createSession, readSettings } from './session.js';
  * @returns {Promise<Array<Record<string, any>>>}
  */
 export async function getStreams(contentId, mediaType, season, episode) {
-  const log = createLogger(VIU.label);
+	const log = createLogger(VIU.label);
 
-  try {
-    return await resolveStreams(contentId, mediaType, season, episode, log);
-  } catch (error) {
-    log.error(`Unexpected error: ${error && error.message ? error.message : error}`);
-    return [];
-  }
+	try {
+		return await resolveStreams(contentId, mediaType, season, episode, log);
+	} catch (error) {
+		log.error(`Unexpected error: ${error?.message ? error.message : error}`);
+		return [];
+	}
 }
 
 /**
@@ -41,111 +46,117 @@ export async function getStreams(contentId, mediaType, season, episode) {
  * @returns {Promise<Array<Record<string, any>>>}
  */
 async function resolveStreams(contentId, mediaType, season, episode, log) {
-  const settings = readSettings();
-  const session = createSession(settings);
+	const settings = readSettings();
+	const session = createSession(settings);
 
-  if (!session.token) {
-    log.error('Missing Viu cookie token. Paste a viu.com cookie that contains the "token" value.');
-    return [];
-  }
+	if (!session.token) {
+		log.error(
+			'Missing Viu cookie token. Paste a viu.com cookie that contains the "token" value.',
+		);
+		return [];
+	}
 
-  const http = createHttpClient({
-    userAgent: VIU.userAgent,
-    accept: 'application/json, text/plain, */*',
-    budgetMs: VIU.budgetMs,
-    startedAt: Date.now(),
-    log,
-  });
-  const client = createViuClient({ http, log, session });
+	const http = createHttpClient({
+		accept: "application/json, text/plain, */*",
+		budgetMs: VIU.budgetMs,
+		log,
+		startedAt: Date.now(),
+		userAgent: VIU.userAgent,
+	});
+	const client = createViuClient({ http, log, session });
 
-  const type = mediaType === 'movie' ? 'movie' : 'tv';
-  const seasonNumber = toPositiveInt(season);
-  const episodeNumber = toPositiveInt(episode) || 1;
-  log.info(`Request id=${contentId} type=${type} season=${seasonNumber} episode=${episodeNumber}`);
+	const type = mediaType === "movie" ? "movie" : "tv";
+	const seasonNumber = toPositiveInt(season);
+	const episodeNumber = toPositiveInt(episode) || 1;
+	log.info(
+		`Request id=${contentId} type=${type} season=${seasonNumber} episode=${episodeNumber}`,
+	);
 
-  const meta = await resolveTitles({
-    contentId,
-    mediaType: type,
-    http,
-    log,
-    countryPriority: VIU.titleCountryPriority,
-  });
+	const meta = await resolveTitles({
+		contentId,
+		countryPriority: VIU.titleCountryPriority,
+		http,
+		log,
+		mediaType: type,
+	});
 
-  if (!meta.titles.length) {
-    log.warn('No title candidates available; cannot search Viu.');
-    return [];
-  }
+	if (!meta.titles.length) {
+		log.warn("No title candidates available; cannot search Viu.");
+		return [];
+	}
 
-  const match = await findBestMatch({
-    titles: meta.titles,
-    mediaType: type,
-    season: seasonNumber,
-    search: client.search,
-    log,
-  });
-  if (!match) return [];
+	const match = await findBestMatch({
+		log,
+		mediaType: type,
+		search: client.search,
+		season: seasonNumber,
+		titles: meta.titles,
+	});
+	if (!match) return [];
 
-  const detail = await client.getDetail(match.item.product_id);
-  if (!detail || !detail.current_product) {
-    log.warn('The Viu detail response has no current_product.');
-    return [];
-  }
+	const detail = await client.getDetail(match.item.product_id);
+	if (!detail?.current_product) {
+		log.warn("The Viu detail response has no current_product.");
+		return [];
+	}
 
-  const current = detail.current_product;
-  const seriesId = current.series_id || match.item.series_id;
-  const movieContent = categoryIsMovie(detail.series);
-  let product = null;
+	const current = detail.current_product;
+	const seriesId = current.series_id || match.item.series_id;
+	const movieContent = categoryIsMovie(detail.series);
+	let product = null;
 
-  if (type === 'movie') {
-    product = movieContent ? current : await resolveMovieProduct(client, seriesId, log);
-  } else {
-    if (movieContent) {
-      log.info('Matched content is a movie, ignoring it for a TV request.');
-      return [];
-    }
+	if (type === "movie") {
+		product = movieContent
+			? current
+			: await resolveMovieProduct(client, seriesId, log);
+	} else {
+		if (movieContent) {
+			log.info("Matched content is a movie, ignoring it for a TV request.");
+			return [];
+		}
 
-    product = await resolveEpisodeProduct({
-      client,
-      current,
-      seriesId,
-      season: seasonNumber,
-      episode: episodeNumber,
-      hasSeasonSuffix: match.parsed.season !== null,
-      log,
-    });
-  }
+		product = await resolveEpisodeProduct({
+			client,
+			current,
+			episode: episodeNumber,
+			hasSeasonSuffix: match.parsed.season !== null,
+			log,
+			season: seasonNumber,
+			seriesId,
+		});
+	}
 
-  if (!product) {
-    log.info(
-      type === 'movie'
-        ? 'No playable movie product was found.'
-        : `Episode not found: season ${seasonNumber} episode ${episodeNumber}.`
-    );
-    return [];
-  }
+	if (!product) {
+		log.info(
+			type === "movie"
+				? "No playable movie product was found."
+				: `Episode not found: season ${seasonNumber} episode ${episodeNumber}.`,
+		);
+		return [];
+	}
 
-  if (!product.ccs_product_id) {
-    log.warn('The selected product has no ccs_product_id.');
-    return [];
-  }
+	if (!product.ccs_product_id) {
+		log.warn("The selected product has no ccs_product_id.");
+		return [];
+	}
 
-  const playback = await client.getPlayback(product.ccs_product_id);
-  if (!playback) {
-    log.warn('Playback returned no stream.');
-    return [];
-  }
+	const playback = await client.getPlayback(product.ccs_product_id);
+	if (!playback) {
+		log.warn("Playback returned no stream.");
+		return [];
+	}
 
-  if (isDrmProtected(playback)) {
-    log.info('Stream is DRM protected, skipping.');
-    return [];
-  }
+	if (isDrmProtected(playback)) {
+		log.info("Stream is DRM protected, skipping.");
+		return [];
+	}
 
-  const episodeLabel = toPositiveInt(product.number) || episodeNumber;
-  const label = type === 'movie' ? 'Movie' : `Episode ${episodeLabel}`;
-  const streams = buildStreams({ stream: playback, detail, label, settings });
+	const episodeLabel = toPositiveInt(product.number) || episodeNumber;
+	const label = type === "movie" ? "Movie" : `Episode ${episodeLabel}`;
+	const streams = buildStreams({ detail, label, settings, stream: playback });
 
-  log.info(`Returning ${streams.length} stream(s).`);
-  return streams;
+	log.info(`Returning ${streams.length} stream(s).`);
+	return streams;
 }
 
 /**
@@ -157,11 +168,11 @@ async function resolveStreams(contentId, mediaType, season, episode, log) {
  * @returns {Promise<Record<string, any>|null>}
  */
 async function resolveMovieProduct(client, seriesId, log) {
-  const products = await client.getProducts(seriesId);
-  if (isSingleMovieProduct(products)) return products[0];
+	const products = await client.getProducts(seriesId);
+	if (isSingleMovieProduct(products)) return products[0];
 
-  log.info('The matched content is not a movie, ignoring it.');
-  return null;
+	log.info("The matched content is not a movie, ignoring it.");
+	return null;
 }
 
 /**
@@ -178,20 +189,28 @@ async function resolveMovieProduct(client, seriesId, log) {
  * @param {ReturnType<typeof createLogger>} options.log
  * @returns {Promise<Record<string, any>|null>}
  */
-async function resolveEpisodeProduct({ client, current, seriesId, season, episode, hasSeasonSuffix, log }) {
-  const products = await client.getProducts(seriesId);
+async function resolveEpisodeProduct({
+	client,
+	current,
+	seriesId,
+	season,
+	episode,
+	hasSeasonSuffix,
+	log,
+}) {
+	const products = await client.getProducts(seriesId);
 
-  if (!products.length) {
-    if (Number(current.number) === episode) return current;
-    log.warn(`No episode list returned for series ${seriesId}.`);
-    return null;
-  }
+	if (!products.length) {
+		if (Number(current.number) === episode) return current;
+		log.warn(`No episode list returned for series ${seriesId}.`);
+		return null;
+	}
 
-  if (isSingleMovieProduct(products)) {
-    log.info('Matched content is a movie, ignoring it for a TV request.');
-    return null;
-  }
+	if (isSingleMovieProduct(products)) {
+		log.info("Matched content is a movie, ignoring it for a TV request.");
+		return null;
+	}
 
-  const allowIndexFallback = season === null || season <= 1 || hasSeasonSuffix;
-  return pickEpisode(products, episode, allowIndexFallback, log);
+	const allowIndexFallback = season === null || season <= 1 || hasSeasonSuffix;
+	return pickEpisode(products, episode, allowIndexFallback, log);
 }

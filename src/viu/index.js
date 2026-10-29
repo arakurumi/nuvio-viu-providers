@@ -1,2 +1,2 @@
-export { getStreams } from './provider.js';
-export { onSettings } from './settings.js';
+export { getStreams } from "./provider.js";
+export { onSettings } from "./settings.js";

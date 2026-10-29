@@ -121,7 +121,7 @@ flowchart TD
 3. **Titles are resolved** from TMDB — primary, original, and alternative titles with Indonesian variants first.
 4. **Viu is searched** with `Show Season N` first for later seasons, then the remaining title variants.
 5. **The best candidate is chosen** with a strict score; trailers, teasers and the wrong season are rejected.
-6. **The detail and episode list** give the product that actually holds the stream.
+6. **The detail and episode list** give the product that actually holds the stream, and that product's detail supplies its own subtitle tracks.
 7. **Playback is requested** from Viu and every returned quality becomes a Nuvio stream.
 
 Endpoints used (all owned by Viu):

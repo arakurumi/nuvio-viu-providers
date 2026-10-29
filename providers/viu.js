@@ -802,9 +802,33 @@ var ViuProvider = (() => {
     }
     const episodeLabel = toPositiveInt(product.number) || episodeNumber;
     const label = type === "movie" ? "Movie" : `Episode ${episodeLabel}`;
-    const streams = buildStreams({ detail, label, settings, stream: playback });
+    const productDetail = await resolveProductDetail(
+      client,
+      product,
+      detail,
+      log
+    );
+    const streams = buildStreams({
+      detail: productDetail,
+      label,
+      settings,
+      stream: playback
+    });
     log.info(`Returning ${streams.length} stream(s).`);
     return streams;
+  }
+  async function resolveProductDetail(client, product, fallback, log) {
+    const currentId = fallback?.current_product?.product_id;
+    const productId = product?.product_id;
+    if (!productId || String(productId) === String(currentId)) return fallback;
+    const detail = await client.getDetail(productId);
+    if (!detail?.current_product) {
+      log.warn(
+        "Detail for the selected product is unavailable; subtitles are skipped."
+      );
+      return null;
+    }
+    return detail;
   }
   async function resolveMovieProduct(client, seriesId, log) {
     const products = await client.getProducts(seriesId);

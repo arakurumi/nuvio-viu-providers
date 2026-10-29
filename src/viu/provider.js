@@ -153,10 +153,48 @@ async function resolveStreams(contentId, mediaType, season, episode, log) {
 
 	const episodeLabel = toPositiveInt(product.number) || episodeNumber;
 	const label = type === "movie" ? "Movie" : `Episode ${episodeLabel}`;
-	const streams = buildStreams({ detail, label, settings, stream: playback });
+	const productDetail = await resolveProductDetail(
+		client,
+		product,
+		detail,
+		log,
+	);
+	const streams = buildStreams({
+		detail: productDetail,
+		label,
+		settings,
+		stream: playback,
+	});
 
 	log.info(`Returning ${streams.length} stream(s).`);
 	return streams;
+}
+
+/**
+ * Viu stores subtitle tracks on the detail of each product, not on playback,
+ * and a series search result points at an arbitrary episode. The detail of
+ * the selected product is loaded so the subtitles match the episode that is
+ * actually played. Movies reuse the detail that was already fetched.
+ *
+ * @param {ReturnType<typeof createViuClient>} client
+ * @param {Record<string, any>} product
+ * @param {Record<string, any>|null} fallback Detail already fetched for the search result.
+ * @param {ReturnType<typeof createLogger>} log
+ * @returns {Promise<Record<string, any>|null>}
+ */
+async function resolveProductDetail(client, product, fallback, log) {
+	const currentId = fallback?.current_product?.product_id;
+	const productId = product?.product_id;
+	if (!productId || String(productId) === String(currentId)) return fallback;
+
+	const detail = await client.getDetail(productId);
+	if (!detail?.current_product) {
+		log.warn(
+			"Detail for the selected product is unavailable; subtitles are skipped.",
+		);
+		return null;
+	}
+	return detail;
 }
 
 /**
